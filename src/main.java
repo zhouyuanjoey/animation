@@ -171,7 +171,7 @@ public class main implements Runnable, EventDrivenInput{
 							//GL11.glRotatef((float)(System.currentTimeMillis()&0xfffffff)/100f, 0, 1, 0) ;
 							GL11.glColor3f(1, 1, 1) ; 
 							//drawLine(new Vector3d(0,0,10), new Vector3d(10,10,10)) ;
-						
+							//(System.currentTimeMillis()&0xfffff)/1000.0
 							Joint root = displayanimation.getframe((System.currentTimeMillis()&0xfffff)/1000.0) ;
 							//Joint root = displayanimation.baseskeletonroot ;
 							root.setGlobalTransform();
