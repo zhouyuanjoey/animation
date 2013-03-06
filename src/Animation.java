@@ -10,6 +10,8 @@ public class Animation {
 
 	Joint baseskeletonroot ;
 	public ArrayList<Frame> frames ;
+	public double animationlength ; // the length of the animation
+	public double frametime ; //the time of one frame
 	
 	static boolean verbose = false ;
 	
@@ -25,7 +27,6 @@ public class Animation {
 		
 		
 		int frameamount ;
-		double frametime ;
 		try{
 			BufferedReader br = new BufferedReader(new FileReader(bvh));
 			int amountunnamed =0;
@@ -131,6 +132,8 @@ public class Animation {
 						//save frame
 						frames.add(new Frame(frameroot, currentframetime));
 						currentframetime+= frametime ;
+						animationlength = currentframetime ;
+						
 					}
 					
 				}
