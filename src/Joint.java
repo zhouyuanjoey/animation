@@ -84,9 +84,14 @@ public class Joint {
 
 		if(parent != null){
 			Matrix4d parenttransform = new Matrix4d(parent.globaltransform);
+			Vector3d parenttranslation = new Vector3d(0, 0, 0);
+			parenttransform.get(parenttranslation);
+			parenttransform.setTranslation(new Vector3d(0, 0, 0));
+			Vector4d mytranslation = new Vector4d(parent.baseoffset);
+			parenttransform.transform(mytranslation);
 			Matrix4d mytransform = new Matrix4d(parent.appliedrotation, new Vector3d(0,0,0), 1) ;
-
 			parenttransform.mul(mytransform) ;
+			parenttransform.setTranslation(new Vector3d(mytranslation.x + parenttranslation.x, mytranslation.y + parenttranslation.y, mytranslation.z + parenttranslation.z));
 			globaltransform = new Matrix4d(parenttransform) ;
 		}else{
 			//globaltransform = new Matrix4d(appliedrotation, new Vector3d(), 1) ;
@@ -106,26 +111,11 @@ public class Joint {
 			}else{
 				GL11.glColor3f(1, 1, 1) ;
 			}
-			Vector4d tp1 = new Vector4d(0, 0, 0, 1);
-			Joint thisParent = parent;
-			while (thisParent != null) {
-				Vector4d p1 = new Vector4d(thisParent.baseoffset.x, thisParent.baseoffset.y, thisParent.baseoffset.z, 1);
-				thisParent.globaltransform.transform(p1) ;
-				tp1.add(p1);
-				thisParent = thisParent.parent;	
-			}
-			tp1.w = 1.0;
-			Vector4d tp2 = new Vector4d(0, 0, 0, 1);
-			Joint thisObject = this;
-			while (thisObject != null) {
-				Vector4d p2 = new Vector4d(thisObject.baseoffset.x, thisObject.baseoffset.y, thisObject.baseoffset.z, 1);
-				thisObject.globaltransform.transform(p2) ;
-				tp2.add(p2);
-				thisObject = thisObject.parent;
-			}
-			tp2.w = 1.0;
-
-			drawLine(tp1, tp2) ;
+			Vector4d p1 = new Vector4d(parent.baseoffset.x, parent.baseoffset.y, parent.baseoffset.z, 1);
+			parent.globaltransform.transform(p1);
+			Vector4d p2 = new Vector4d(baseoffset.x, baseoffset.y, baseoffset.z, 1);
+			globaltransform.transform(p2);
+			drawLine(p1, p2) ;
 			//System.out.println(name) ;
 		}
 
