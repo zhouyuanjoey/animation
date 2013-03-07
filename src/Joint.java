@@ -111,11 +111,36 @@ public class Joint {
 			}else{
 				GL11.glColor3f(1, 1, 1) ;
 			}
-			Vector4d p1 = new Vector4d(parent.baseoffset.x, parent.baseoffset.y, parent.baseoffset.z, 1);
-			parent.globaltransform.transform(p1);
+			Vector3d[] perpendicular = new Vector3d[3]; 
+			perpendicular[0] = new Vector3d(baseoffset.z, baseoffset.z, -baseoffset.x - baseoffset.y);
+			perpendicular[1] = new Vector3d(-baseoffset.y - baseoffset.z, baseoffset.x, baseoffset.x);
+			perpendicular[2] = new Vector3d(baseoffset.y, -baseoffset.z - baseoffset.x, baseoffset.y);
+			int index = 0;
+			double maxLength = perpendicular[0].lengthSquared();
+			for (int i = 1; i <= 2; i++)
+			if (perpendicular[i].lengthSquared() > maxLength) {
+				index = i;
+				maxLength =  perpendicular[i].lengthSquared();
+			}
+			perpendicular[index].normalize();
+			Vector4d []startPoints = new Vector4d[24];
+			Vector4d []endPoints = new Vector4d[24];
 			Vector4d p2 = new Vector4d(baseoffset.x, baseoffset.y, baseoffset.z, 1);
-			globaltransform.transform(p2);
-			drawLine(p1, p2) ;
+			Vector4d p2n = new Vector4d();
+			p2n.normalize(p2);
+			Quat4d rot = new Quat4d();
+			Matrix4d rotp2 = new Matrix4d();
+			for (int i = 0; i < 24; i++) {
+				rot.setAxisAngle(p2n.x, p2n.y, p2n.z, Math.PI / 12 * i);
+				startPoints[i] = new Vector4d(3 * perpendicular[index].x, 3 * perpendicular[index].y, 3 * perpendicular[index].z, 1);
+				rotp2.set(rot);
+				rotp2.transform(startPoints[i]);
+				endPoints[i] = new Vector4d(startPoints[i].x + p2.x, startPoints[i].y + p2.y, startPoints[i].z + p2.z, 1);
+				globaltransform.transform(startPoints[i]);
+				globaltransform.transform(endPoints[i]);
+				GL11.glColor3f((float)i / 24, 1 - (float)i / 24, 0.0f);
+				drawLine(startPoints[i], endPoints[i]) ;
+			}
 			//System.out.println(name) ;
 		}
 
