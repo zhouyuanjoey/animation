@@ -17,6 +17,9 @@ public class Animation {
 	
 	static final double degreestoradians = Math.PI/180 ;
 	
+	public ArrayList<String> jointnames;
+	
+	
 	//loads an animation from a bvh file
 	public Animation(File bvh){
 		//build a list to keep track of what each number represents in a row
@@ -78,8 +81,11 @@ public class Animation {
 					
 					//save the baseskeleton
 					baseskeletonroot = currentparent ;
+					jointnames = baseskeletonroot.getJointNames() ;
 					frames = new ArrayList<Frame>(frameamount) ;
 					double currentframetime = 0 ;
+					
+					
 					
 					//build the animation
 					for(int k=0;k<frameamount;k++){
@@ -130,6 +136,7 @@ public class Animation {
 						
 						
 						//save frame
+						frameroot.setGlobalTransform() ;
 						frames.add(new Frame(frameroot, currentframetime));
 						currentframetime+= frametime ;
 						animationlength = currentframetime ;
@@ -145,14 +152,37 @@ public class Animation {
 		
 	}
 	
-	public double parse(String s){
+	//makes the code for parsing a double slightly shorter
+	public static double parse(String s){
 		return Double.parseDouble(s) ;
 	}
 	
+	//returns the skeleton of a frame at the given time in seconds
 	public Joint getframe(double time){
+		int f = (int)(time/frametime) ;
+		if(f < 0) f = 0 ;
+		if(f >= frames.size()) f = frames.size()-1 ;
+		return frames.get(f).root ;
 		
-		return frames.get(((int)(time/frames.get(1).time)) % frames.size()).root ;
-		
+	}
+	
+	//returns an axis aligned bounding box of the entire motion
+	//in the form (minx,miny,minz,maxx,maxy,maxz
+	public double[] getAABB(){
+		double AABB[] = new double[]{99999,99999,99999,-99999,-99999,-99999} ;
+		for(int k=0;k<frames.size();k++){
+			Joint root = frames.get(k).root ;
+			for(int j=0;j<jointnames.size();j++){
+				Vector3d p = root.getJoint(jointnames.get(j)).getWorldPoint() ;
+				if(p.x < AABB[0])AABB[0] = p.x ;
+				if(p.y < AABB[1])AABB[1] = p.y ;
+				if(p.z < AABB[2])AABB[2] = p.z ;
+				if(p.x > AABB[3])AABB[3] = p.x ;
+				if(p.y > AABB[4])AABB[4] = p.y ;
+				if(p.z > AABB[5])AABB[5] = p.z ;
+			}
+		}
+		return AABB ;
 	}
 	
 	
@@ -166,4 +196,5 @@ public class Animation {
 		}
 		
 	}
+	
 }

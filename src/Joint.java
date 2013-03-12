@@ -6,21 +6,21 @@ import org.lwjgl.opengl.GL11;
 
 public class Joint {
 	// the parent of this joint or null for the root
-	Joint parent ;
+	public Joint parent ;
 
 	// the offset of this joint from it's parent in the original skeleton
-	Vector3d baseoffset ;
+	public Vector3d baseoffset ;
 
 	//the current rotation applied to this joint
-	Quat4d appliedrotation ;
+	public Quat4d appliedrotation ;
 
 	//the children of this joint
-	ArrayList<Joint> children ;
+	public ArrayList<Joint> children ;
 
 	//the name of this joint
-	String name ;
+	public String name ;
 
-	Matrix4d globaltransform ;
+	public Matrix4d globaltransform ;
 
 	//make a new joint by adding an offset to a parent jointr
 	public Joint( Joint parent, Vector3d offset, String name){
@@ -77,6 +77,44 @@ public class Joint {
 		}
 	}
 
+	//Returns a child joint with the given name or null if there is none
+	public Joint getJoint(String jointname){
+		if(name.equals(jointname)){
+			return this ;
+		}else{
+			for(int k=0;k<children.size(); k++){
+				Joint result = children.get(k).getJoint(jointname) ;
+				if(result!=null){
+					return result ;
+				}
+			}
+			return null ;
+		}
+	}
+
+	//returns the names of all joints in this tree
+	public ArrayList<String> getJointNames(){
+		ArrayList<String> names = new ArrayList<String>() ;
+		addJointNames(names);
+		return names ;
+	}
+
+	//add the joint names of this and all lower joints to the arraylist of names
+	public void addJointNames(ArrayList<String> names){
+		names.add(name);
+		for(int k=0;k<children.size(); k++){
+			children.get(k).addJointNames(names) ;
+		}
+	}
+	
+	//returns the location of the end of this joint in world space assuming the global transform has been set
+	public Vector3d getWorldPoint(){
+		Vector4d a = new Vector4d(baseoffset.x,baseoffset.y,baseoffset.z, 1);
+		globaltransform.transform(a) ;
+		
+		return new Vector3d(a.x,a.y,a.z) ;
+	}
+
 
 	//sets the Global transform of this object assuming its parent's is set
 	//then recursively calls on children
@@ -104,58 +142,74 @@ public class Joint {
 		}
 	}
 
-	public void drawLines(){
+	//draws cylinders around the skeleton bones
+	public void drawCylinders(double radius, int points){
 		if(parent!=null){
-			if(children.size() < 1){
-				GL11.glColor3f(1, 1, 0) ;
-			}else{
-				GL11.glColor3f(1, 1, 1) ;
+
+			//get axis along bone
+			Vector3d boneaxis = new Vector3d(baseoffset.x, baseoffset.y, baseoffset.z) ;
+			boneaxis.normalize();
+			Vector3d up = new Vector3d(-.02f,0.01f,1) ;
+			Vector3d right = new Vector3d();
+			right.cross(boneaxis, up) ;
+			up.cross(boneaxis,right) ;
+			right.normalize();
+			up.normalize() ;
+			GL11.glBegin(GL11.GL_QUADS) ;
+			for(int p=0; p <points; p++){
+				//map a circle around each bone to be in terms of the up and right vectors
+				double u1 = Math.sin(2*Math.PI*((double)p) / points) * radius ;
+				double r1 = Math.cos(2*Math.PI*((double)p) / points) * radius ;
+				double x1 = u1 * up.x + r1 * right.x ;
+				double y1 = u1 * up.y + r1 * right.y ;
+				double z1 = u1 * up.z + r1 * right.z ;
+				double u2 = Math.sin(2*Math.PI*(p+1.0) / points) * radius ;
+				double r2 = Math.cos(2*Math.PI*(p+1.0) / points) * radius ;
+				double x2 = u2 * up.x + r2 * right.x ;
+				double y2 = u2 * up.y + r2 * right.y ;
+				double z2 = u2 * up.z + r2 * right.z ;
+				//make the quad from neighboring points at each end of the bone
+				Vector4d quad[] = new Vector4d[]{
+						new Vector4d(x1,y1,z1,1),
+						new Vector4d(x2,y2,z2,1),
+						new Vector4d(x2+baseoffset.x,y2+baseoffset.y,z2+baseoffset.z,1),
+						new Vector4d(x1+baseoffset.x,y1+baseoffset.y,z1+baseoffset.z,1)
+				} ;
+
+				//apply the global transform 
+				for(int k=0;k<quad.length; k++){
+					globaltransform.transform(quad[k]) ;
+				}
+
+				//calculate the normal of the quad from the transformed points
+				Vector3d normal = new Vector3d() ;
+				normal.cross(
+						new Vector3d(quad[1].x - quad[0].x, quad[1].y - quad[0].y, quad[1].z - quad[0].z),  
+						new Vector3d(quad[2].x - quad[0].x, quad[2].y - quad[0].y, quad[2].z - quad[0].z)
+				);
+				normal.normalize() ;
+
+				for(int k=0;k<quad.length; k++){
+					//Draw quads with normals using whatever mode openGL is currently in
+					//System.out.println(quad[k].x +", " + quad[k].y +", " + quad[k].z) ;
+					GL11.glVertex3d(quad[k].x,quad[k].y,quad[k].z) ;
+					GL11.glNormal3d(normal.x, normal.y, normal.z) ;
+
+				}
 			}
-			Vector3d[] perpendicular = new Vector3d[3]; 
-			perpendicular[0] = new Vector3d(baseoffset.z, baseoffset.z, -baseoffset.x - baseoffset.y);
-			perpendicular[1] = new Vector3d(-baseoffset.y - baseoffset.z, baseoffset.x, baseoffset.x);
-			perpendicular[2] = new Vector3d(baseoffset.y, -baseoffset.z - baseoffset.x, baseoffset.y);
-			int index = 0;
-			double maxLength = perpendicular[0].lengthSquared();
-			for (int i = 1; i <= 2; i++)
-			if (perpendicular[i].lengthSquared() > maxLength) {
-				index = i;
-				maxLength =  perpendicular[i].lengthSquared();
-			}
-			perpendicular[index].normalize();
-			Vector4d []startPoints = new Vector4d[24];
-			Vector4d []endPoints = new Vector4d[24];
-			Vector4d p2 = new Vector4d(baseoffset.x, baseoffset.y, baseoffset.z, 1);
-			Vector4d p2n = new Vector4d();
-			p2n.normalize(p2);
-			Quat4d rot = new Quat4d();
-			Matrix4d rotp2 = new Matrix4d();
-			for (int i = 0; i < 24; i++) {
-				rot.setAxisAngle(p2n.x, p2n.y, p2n.z, Math.PI / 12 * i);
-				startPoints[i] = new Vector4d(3 * perpendicular[index].x, 3 * perpendicular[index].y, 3 * perpendicular[index].z, 1);
-				rotp2.set(rot);
-				rotp2.transform(startPoints[i]);
-				endPoints[i] = new Vector4d(startPoints[i].x + p2.x, startPoints[i].y + p2.y, startPoints[i].z + p2.z, 1);
-				globaltransform.transform(startPoints[i]);
-				globaltransform.transform(endPoints[i]);
-				GL11.glColor3f((float)i / 24, 1 - (float)i / 24, 0.0f);
-				drawLine(startPoints[i], endPoints[i]) ;
-			}
-			//System.out.println(name) ;
+			GL11.glEnd();
+
+
 		}
 
 		for(int k=0;k<children.size();k++){
-			children.get(k).drawLines() ;
+			children.get(k).drawCylinders(radius,points) ;
 		}
 
-	}
-	public void drawLine(Vector4d a, Vector4d b){
-		GL11.glBegin(GL11.GL_LINES);
-		GL11.glVertex3d(a.x,a.y, a.z);
-		GL11.glVertex3d(b.x,b.y, b.z);
-		GL11.glEnd();
+
 
 	}
+	
 
 }
 

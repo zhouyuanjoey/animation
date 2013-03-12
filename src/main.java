@@ -33,17 +33,19 @@ import org.lwjgl.opengl.DisplayMode;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GLContext;
 
+import org.lwjgl.util.glu.*;
+
 
 
 public class main implements Runnable, EventDrivenInput{
 
 
 	boolean texturechange,ready,exiting,updated ;
-	
-	
 
 
-	
+
+
+
 
 	Thread mythread ;
 	lwjglinputcatcher input ;
@@ -56,9 +58,9 @@ public class main implements Runnable, EventDrivenInput{
 
 	public static Animation displayanimation = null;
 
-	public static Quat4d rot = new Quat4d(0,0,0,1) ;
-	double rotspeed = .001 ;
 	
+	
+
 	static float sliderAABB[];//the location in raw screen coordinates of the time slider
 	static float sliderwidth=10f, sliderheight=15f ;//slider mark size in pixels
 	static float sliderposition = .5f; // the slider's position as a fraction o the slider bar
@@ -66,8 +68,20 @@ public class main implements Runnable, EventDrivenInput{
 
 	static float playAABB[], pauseAABB[], stepleftAABB[], steprightAABB[],traceAABB[] ;
 	static boolean playing = true ;
+	static boolean tracingenabled = true ;
 	long lastplaytime = System.currentTimeMillis() ;
+
+	boolean mouseleftdown = false, mouserightdown = false  ;
+	int lastmousex, lastmousey ;
 	
+	
+	Vector3d camerapos = new Vector3d(30,50,200) ;
+	static double animationAABB[] ;
+	static Vector3d animationcenter ;
+	double rotationspeed = .01 ;
+	double zoomspeed = .2 ;
+	
+
 	public static void main(String args[]){
 		//if atleast 2 arguments then first 2 are width and height of window
 		if(args.length>=2){
@@ -77,13 +91,14 @@ public class main implements Runnable, EventDrivenInput{
 			windowwidth= 1024 ;
 			windowheight = 768 ;
 		}
+		
 		sliderAABB = new float[]{10,windowheight-30,windowwidth-150,windowheight-20} ;
 		playAABB = new float[]{windowwidth-145,windowheight-35,windowwidth-125,windowheight-15} ;
 		pauseAABB = new float[]{windowwidth-120,windowheight-35,windowwidth-100,windowheight-15} ;
 		stepleftAABB = new float[]{windowwidth-95,windowheight-35,windowwidth-75,windowheight-15} ;
 		steprightAABB = new float[]{windowwidth-70,windowheight-35,windowwidth-50,windowheight-15} ;
 		traceAABB = new float[]{windowwidth-45,windowheight-35,windowwidth-25,windowheight-15} ;
-		
+
 		JFileChooser chooser = new JFileChooser("./");
 		int returnVal = chooser.showOpenDialog(null);
 		if(returnVal == JFileChooser.APPROVE_OPTION){
@@ -92,6 +107,10 @@ public class main implements Runnable, EventDrivenInput{
 			displayanimation = new Animation(new File(filename)) ;
 		}
 
+		animationAABB = displayanimation.getAABB() ;
+		animationcenter = new Vector3d((animationAABB[0]+animationAABB[3])/2, 
+				(animationAABB[1]+animationAABB[4])/2,
+				(animationAABB[2]+animationAABB[5])/2) ;
 
 		main r = new main();
 
@@ -133,7 +152,7 @@ public class main implements Runnable, EventDrivenInput{
 
 							texturechange = false ;
 						}else{
-							
+
 							begin();//begins section where 3D openGL drawing can happen
 
 
@@ -147,52 +166,109 @@ public class main implements Runnable, EventDrivenInput{
 							}else{
 								lastplaytime = time ;
 							}
-								
-								
+
+
 							//TODO Draw Stuff Here!
-							double dx = Mouse.getDX();
-							double dy = Mouse.getDY();
-							//System.out.println(dx +", " + dy) ;
-							Quat4d newrot = new Quat4d(0,0,0,1) ;
-							newrot.setAxisAngle(0, 1, 0, dx*rotspeed) ;
-							newrot.mul(rot) ;
-							//rot.mul(newrot) ;
-							rot.setAxisAngle(1, 0, 0, dy*rotspeed) ;
-							rot.mul(newrot) ;
+							double dx = Mouse.getX() - lastmousex;
+							double dy = Mouse.getY() - lastmousey;
+							if(mouseleftdown){
+								//rotate camera around animation
+								Vector4d rcp = new Vector4d(
+										camerapos.x-animationcenter.x, 
+										camerapos.y-animationcenter.y,
+										camerapos.z-animationcenter.z,
+										1) ;
+								Quat4d newrot = new Quat4d(0,0,0,1) ;
+								newrot.setAxisAngle(0, 1, 0, dx*rotationspeed) ;
+								Matrix4d m = new Matrix4d(newrot, new Vector3d(), 1) ;
+								m.transform(rcp) ;
+								//calculate a relative x axis perpendicular to the facing vector and up
+								Vector3d relxaxis = new Vector3d(rcp.x,rcp.y,rcp.z) ;
+								relxaxis.cross(relxaxis,new Vector3d(0,1,0)) ;
+								relxaxis.normalize();
+								newrot.setAxisAngle(relxaxis.x, relxaxis.y, relxaxis.z, dy*rotationspeed) ;
+								m = new Matrix4d(newrot, new Vector3d(), 1) ;
+								m.transform(rcp) ;
+								camerapos.add(animationcenter,new Vector3d(rcp.x,rcp.y,rcp.z)) ;
+								/*
+								
+								//System.out.println(dx +", " + dy) ;
+								Quat4d newrot = new Quat4d(0,0,0,1) ;
+								newrot.setAxisAngle(0, 1, 0, dx*rotspeed) ;
+								newrot.mul(rot) ;
+								//rot.mul(newrot) ;
+								rot.setAxisAngle(1, 0, 0, dy*rotspeed) ;
+								rot.mul(newrot) ;
+								*/
+							}
+							
+							if(mouserightdown){
+								//zoom camera in and out
+								Vector3d rcp = new Vector3d() ;
+								rcp.sub(camerapos,animationcenter ) ;
+								double length = rcp.length() ;
+								rcp.scale( (length + dy*-zoomspeed)/length, rcp) ;
+								camerapos.add(animationcenter,rcp) ;
+							}
+							lastmousex = Mouse.getX() ;
+							lastmousey = Mouse.getY() ;
+							/*
 							//convert quaternion to axis angle and apply
 							double[] axisangle = rot.getaxisangle() ;
-							
+
 							//System.out.println("drawing");
 
-							GL11.glTranslatef(-30, 0, -200) ;
+							GL11.glTranslatef(-30, 0, -100) ;
 
-							//GL11.glRotatef((float)( axisangle[3]*180/Math.PI), (float)axisangle[0], (float)axisangle[1], (float)axisangle[2]) ;
-
-
-
+							GL11.glRotatef((float)( axisangle[3]*180/Math.PI), (float)axisangle[0], (float)axisangle[1], (float)axisangle[2]) ;
+							*/
+							
+							//camera always looks at middle of AABB containing animation
+							GLU.gluLookAt((float)camerapos.x, (float)camerapos.y, (float)camerapos.z, 
+									(float)animationcenter.x,(float)animationcenter.y,(float)animationcenter.z, 0, 1, 0) ;
 
 
 
 							//GL11.glRotatef((float)(System.currentTimeMillis()&0xfffffff)/100f, 0, 1, 0) ;
+							
 							GL11.glColor3f(1, 1, 1) ;
 							//drawLine(new Vector3d(0,0,10), new Vector3d(10,10,10)) ;
 							//(System.currentTimeMillis()&0xfffff)/1000.0
-							
+
 							//sliderposition+=.001;
 							//if(sliderposition >1){sliderposition = 0 ;} 
 							Joint root = displayanimation.getframe(sliderposition*displayanimation.animationlength) ;
-							//Joint root = displayanimation.baseskeletonroot ;
-							root.setGlobalTransform();
-							root.drawLines() ;
-
+							
+							GL11.glPolygonMode(GL11.GL_FRONT_AND_BACK, GL11.GL_FILL);
+							GL11.glEnable(GL11.GL_LIGHTING);
+							GL11.glEnable(GL11.GL_LIGHT0);
+							
+							//draw the animation in cylindersa of "size", with "sides"
+							root.drawCylinders(1.7, 6) ;
+							
+							if(tracingenabled){
+								GL11.glDisable(GL11.GL_LIGHTING);
+								GL11.glColor3f(0,0.5f,1) ;
+								int startoffset=-10,stopoffset = 3 ;
+								for(int k=0;k<displayanimation.jointnames.size(); k++){
+									String name = displayanimation.jointnames.get(k) ; // get the name of this joint
+									Vector3d last = displayanimation.getframe(displayanimation.frametime*startoffset+ sliderposition*displayanimation.animationlength).getJoint(name).getWorldPoint() ;
+									for(int f=startoffset+1; f < stopoffset; f++){
+										Vector3d current = displayanimation.getframe(displayanimation.frametime*f+ sliderposition*displayanimation.animationlength).getJoint(name).getWorldPoint() ;
+										//System.out.println(last.x +", " + last.y +", " + last.z) ;
+										drawLine(last, current) ;
+										last = current ;
+									}
+								}
+							}
 
 							//begin drawing iterface components here
 							begininterface(windowwidth,windowheight) ;
-							
+
 							//the time slider 
 							GL11.glColor3f(.4f, .4f, .4f) ;
 							drawAABB(sliderAABB) ;
-							
+
 							//the little blip on the time slider
 							GL11.glColor3f(.7f, .7f, .7f) ;
 							GL11.glBegin(GL11.GL_QUADS) ;
@@ -203,7 +279,7 @@ public class main implements Runnable, EventDrivenInput{
 							GL11.glVertex3f( cx + sliderwidth/2, cy+sliderheight/2, -interfacez) ;
 							GL11.glVertex3f( cx - sliderwidth/2, cy+sliderheight/2, -interfacez) ;
 							GL11.glEnd();
-							
+
 							//the other buttons
 							//play 
 							GL11.glColor3f(.4f, .4f, .4f) ;
@@ -214,7 +290,7 @@ public class main implements Runnable, EventDrivenInput{
 							GL11.glVertex3f( playAABB[0]  + .2f*(playAABB[2]-playAABB[0]), playAABB[1]  + .8f*(playAABB[3]-playAABB[1]), -interfacez) ;
 							GL11.glVertex3f( playAABB[0]  + .9f*(playAABB[2]-playAABB[0]), playAABB[1]  + .5f*(playAABB[3]-playAABB[1]), -interfacez) ;
 							GL11.glEnd();
-							
+
 							//pause 
 							GL11.glColor3f(.4f, .4f, .4f) ;
 							drawAABB(pauseAABB) ;
@@ -224,14 +300,14 @@ public class main implements Runnable, EventDrivenInput{
 							GL11.glVertex3f( pauseAABB[0]  + .4f*(pauseAABB[2]-pauseAABB[0]), pauseAABB[1]  + .2f*(pauseAABB[3]-pauseAABB[1]), -interfacez) ;
 							GL11.glVertex3f( pauseAABB[0]  + .4f*(pauseAABB[2]-pauseAABB[0]), pauseAABB[1]  + .8f*(pauseAABB[3]-pauseAABB[1]), -interfacez) ;
 							GL11.glVertex3f( pauseAABB[0]  + .2f*(pauseAABB[2]-pauseAABB[0]), pauseAABB[1]  + .8f*(pauseAABB[3]-pauseAABB[1]), -interfacez) ;
-							
+
 							GL11.glVertex3f( pauseAABB[0]  + .6f*(pauseAABB[2]-pauseAABB[0]), pauseAABB[1]  + .2f*(pauseAABB[3]-pauseAABB[1]), -interfacez) ;
 							GL11.glVertex3f( pauseAABB[0]  + .8f*(pauseAABB[2]-pauseAABB[0]), pauseAABB[1]  + .2f*(pauseAABB[3]-pauseAABB[1]), -interfacez) ;
 							GL11.glVertex3f( pauseAABB[0]  + .8f*(pauseAABB[2]-pauseAABB[0]), pauseAABB[1]  + .8f*(pauseAABB[3]-pauseAABB[1]), -interfacez) ;
 							GL11.glVertex3f( pauseAABB[0]  + .6f*(pauseAABB[2]-pauseAABB[0]), pauseAABB[1]  + .8f*(pauseAABB[3]-pauseAABB[1]), -interfacez) ;
-							
+
 							GL11.glEnd();
-							
+
 							//step left
 							GL11.glColor3f(.4f, .4f, .4f) ;
 							drawAABB(stepleftAABB) ;
@@ -272,16 +348,16 @@ public class main implements Runnable, EventDrivenInput{
 							GL11.glVertex3f( traceAABB[0]  + .2f*(traceAABB[2]-traceAABB[0]), traceAABB[1]  + .6f*(traceAABB[3]-traceAABB[1]), -interfacez) ;
 							GL11.glVertex3f( traceAABB[0]  + .8f*(traceAABB[2]-traceAABB[0]), traceAABB[1]  + .6f*(traceAABB[3]-traceAABB[1]), -interfacez) ;
 							GL11.glEnd();
-							
-							
-							
+
+
+
 						}
 					}
 				}while(finish() );
 			}
 		}
 	}
-	
+
 	public static void drawAABB(float AABB[]){
 		GL11.glBegin(GL11.GL_QUADS) ;
 		GL11.glVertex3f(AABB[0], AABB[1], -interfacez-.001f) ;
@@ -372,7 +448,7 @@ public class main implements Runnable, EventDrivenInput{
 			if(inAABB(x,y,sliderAABB)){
 				sliderposition=(Mouse.getX() -sliderAABB[0])/(sliderAABB[2] -sliderAABB[0]) ;
 			}
-			
+
 			//hit play
 			if(inAABB(x,y,playAABB)){
 				playing=true ;
@@ -382,6 +458,11 @@ public class main implements Runnable, EventDrivenInput{
 				playing=false ;
 			}
 			
+			//hit pause
+			if(inAABB(x,y,traceAABB)){
+				tracingenabled=!tracingenabled ;
+			}
+
 			//step one frame left
 			if(inAABB(x,y,stepleftAABB)){
 				sliderposition-= displayanimation.frametime/displayanimation.animationlength ;
@@ -392,25 +473,27 @@ public class main implements Runnable, EventDrivenInput{
 				sliderposition+= displayanimation.frametime/displayanimation.animationlength ;
 				sliderposition = Math.min(sliderposition,1) ;
 			}
-			
-			
-			
+
+
+
 
 		}
-		/*
+
 		if(button == 0){
 			if(state){
-
+				mouseleftdown = true ;
 			}else{
-
+				mouseleftdown = false ;
 			}
 		}else if(button == 1){
 			if(state){
-
+				mouserightdown = true ;
 			}else{
-
+				mouserightdown = false ;
 			}
-		}*/
+		}
+		lastmousex = Mouse.getX() ;
+		lastmousey = Mouse.getY() ;
 	}
 
 
@@ -450,8 +533,8 @@ public class main implements Runnable, EventDrivenInput{
 
 
 
-			
-		
+
+
 
 
 			GL11.glMatrixMode(GL11.GL_MODELVIEW);
@@ -468,7 +551,7 @@ public class main implements Runnable, EventDrivenInput{
 
 
 	public void begin() {
-		
+
 		GL11.glMatrixMode(GL11.GL_PROJECTION);
 
 		if (!GLContext.getCapabilities().GL_ARB_transpose_matrix) {
@@ -489,7 +572,7 @@ public class main implements Runnable, EventDrivenInput{
 		GL11.glMatrixMode(GL11.GL_MODELVIEW);
 		// GL11.glOrtho(0.0, 1.0, 0.0, 1.0, -1.0, 1.0);
 		GL11.glClearDepth(1);
-		
+
 		GL11.glDisable(GL11.GL_LIGHTING);
 
 		GL11.glPolygonMode(GL11.GL_FRONT_AND_BACK, GL11.GL_FILL);
@@ -497,18 +580,18 @@ public class main implements Runnable, EventDrivenInput{
 		GL11.glLoadIdentity();
 		// GL11.glPushMatrix();
 	}
-	
-public void begininterface(int w, int h) {
-		
-		
+
+	public void begininterface(int w, int h) {
+
+
 		GL11.glMatrixMode(GL11.GL_PROJECTION);
 		if (!GLContext.getCapabilities().GL_ARB_transpose_matrix) {
 			GL11.glLoadIdentity();
 		} else {
 			final FloatBuffer identityTranspose = BufferUtils
-					.createFloatBuffer(16).put(
-							new float[] { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0,
-									0, 0, 0, 1 });
+			.createFloatBuffer(16).put(
+					new float[] { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0,
+							0, 0, 0, 1 });
 			identityTranspose.flip();
 			ARBTransposeMatrix.glLoadTransposeMatrixARB(identityTranspose);
 		}
@@ -518,11 +601,12 @@ public void begininterface(int w, int h) {
 		//GL11.glClear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT);
 		GL11.glLoadIdentity();
 		// do background objects
-		
+
 		GL11.glScalef(1,-1,1);
 		GL11.glTranslatef(0, -h, 0);
+		GL11.glDisable(GL11.GL_LIGHTING);
 	}
-	
+
 
 	public boolean finish() {
 		// GL11.glFlush();
