@@ -57,10 +57,8 @@ public class main implements Runnable, EventDrivenInput{
 
 
 	public static Animation displayanimation = null;
-
+	public static Obj Amonster = new Obj(new File("monster.obj"));
 	
-	
-
 	static float sliderAABB[];//the location in raw screen coordinates of the time slider
 	static float sliderwidth=10f, sliderheight=15f ;//slider mark size in pixels
 	static float sliderposition = .5f; // the slider's position as a fraction o the slider bar
