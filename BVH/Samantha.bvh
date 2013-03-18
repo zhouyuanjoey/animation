@@ -1,0 +1,95 @@
+HIERARCHY
+ROOT Hips
+{
+    OFFSET 0 0 0
+    CHANNELS 6 Xposition Yposition Zposition Zrotation Xrotation Yrotation 
+    JOINT LeftHip
+    {
+        OFFSET 3.3 0 0
+        CHANNELS 3 Zrotation Xrotation Yrotation 
+        JOINT LeftKnee
+        {
+            OFFSET 0 -17 0
+            CHANNELS 1 Xrotation 
+            End Site
+            {
+                OFFSET 0 -15.5 0
+            }
+        }
+    }
+    JOINT RightHip
+    {
+        OFFSET -3.3 0 0
+        CHANNELS 3 Zrotation Xrotation Yrotation 
+        JOINT RightKnee
+        {
+            OFFSET 0 -17 0
+            CHANNELS 1 Xrotation 
+            End Site
+            {
+                OFFSET 0 -15.5 0
+            }
+        }
+    }
+    JOINT Chest
+    {
+        OFFSET 0 4.41 0
+        CHANNELS 3 Zrotation Xrotation Yrotation 
+        JOINT Neck
+        {
+            OFFSET 0 11.76 0
+            CHANNELS 2 Zrotation Xrotation 
+            JOINT Head
+            {
+                OFFSET 0 4.4 0
+                CHANNELS 3 Zrotation Xrotation Yrotation 
+                End Site
+                {
+                    OFFSET 0 3.31 0
+                }
+            }
+        }
+        JOINT LeftCollar
+        {
+            OFFSET 1.01 10.2 0
+            CHANNELS 2 Zrotation Yrotation 
+            JOINT LeftShoulder
+            {
+                OFFSET 3.5 0 0
+                CHANNELS 3 Zrotation Xrotation Yrotation 
+                JOINT LeftElbow
+                {
+                    OFFSET 10 0 0
+                    CHANNELS 1 Xrotation 
+                    End Site
+                    {
+                        OFFSET 9 0 0
+                    }
+                }
+            }
+        }
+        JOINT RightCollar
+        {
+            OFFSET -1.01 10.2 0
+            CHANNELS 2 Zrotation Yrotation 
+            JOINT RightShoulder
+            {
+                OFFSET -3.5 0 0
+                CHANNELS 3 Zrotation Xrotation Yrotation 
+                JOINT RightElbow
+                {
+                    OFFSET  -10 0 0
+                    CHANNELS 1 Xrotation 
+                    End Site
+                    {
+                        OFFSET -9 0 0
+                    }
+                }
+            }
+        }
+    }
+}
+MOTION
+Frames:  1
+Frame Time: 0.033333
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 

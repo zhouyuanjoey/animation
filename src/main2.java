@@ -37,7 +37,7 @@ import org.lwjgl.util.glu.*;
 
 
 
-public class main implements Runnable, EventDrivenInput{
+public class main2 implements Runnable, EventDrivenInput{
 
 
 	boolean texturechange,ready,exiting,updated ;
@@ -57,7 +57,7 @@ public class main implements Runnable, EventDrivenInput{
 
 
 	public static Animation displayanimation = null;
-	
+
 	static float sliderAABB[];//the location in raw screen coordinates of the time slider
 	static float sliderwidth=10f, sliderheight=15f ;//slider mark size in pixels
 	static float sliderposition = .5f; // the slider's position as a fraction o the slider bar
@@ -70,17 +70,19 @@ public class main implements Runnable, EventDrivenInput{
 
 	boolean mouseleftdown = false, mouserightdown = false  ;
 	int lastmousex, lastmousey ;
-	
-	
+
+
 	Vector3d camerapos = new Vector3d(30,50,200) ;
 	static double animationAABB[] ;
 	static Vector3d animationcenter ;
 	double rotationspeed = .01 ;
 	double zoomspeed = .2 ;
-	
+
 	static boolean modeldisplaymode = false ;
-	static Obj model ;
 	
+	
+	static boundmodel model ;
+
 
 	public static void main(String args[]){
 		//if atleast 2 arguments then first 2 are width and height of window
@@ -91,7 +93,7 @@ public class main implements Runnable, EventDrivenInput{
 			windowwidth= 1024 ;
 			windowheight = 768 ;
 		}
-		
+
 		sliderAABB = new float[]{10,windowheight-30,windowwidth-150,windowheight-20} ;
 		playAABB = new float[]{windowwidth-145,windowheight-35,windowwidth-125,windowheight-15} ;
 		pauseAABB = new float[]{windowwidth-120,windowheight-35,windowwidth-100,windowheight-15} ;
@@ -100,39 +102,48 @@ public class main implements Runnable, EventDrivenInput{
 		traceAABB = new float[]{windowwidth-45,windowheight-35,windowwidth-25,windowheight-15} ;
 
 		JFileChooser chooser = new JFileChooser("./");
+		//load model
 		int returnVal = chooser.showOpenDialog(null);
+		Obj rawmodel=null ;
 		if(returnVal == JFileChooser.APPROVE_OPTION){
 
 			String filename= chooser.getSelectedFile().getPath() ;
-			String s[] = filename.split("\\.") ;
-			if(s[s.length-1].toLowerCase().equals("obj")){
-				modeldisplaymode = true ;
-				model = new Obj(new File(filename)) ;
-				
-				animationAABB = model.getAABB() ;
-				animationcenter = new Vector3d((animationAABB[0]+animationAABB[3])/2, 
-				(animationAABB[1]+animationAABB[4])/2,
-				(animationAABB[2]+animationAABB[5])/2) ;
-				
-			}else{
-				displayanimation = new Animation(new File(filename)) ;
-				
-				animationAABB = displayanimation.getAABB() ;
-				animationcenter = new Vector3d((animationAABB[0]+animationAABB[3])/2, 
-				(animationAABB[1]+animationAABB[4])/2,
-				(animationAABB[2]+animationAABB[5])/2) ;
-			}
+			modeldisplaymode = true ;
+			rawmodel = new Obj(new File(filename)) ;
+
+			animationAABB = rawmodel.getAABB() ;
+			animationcenter = new Vector3d((animationAABB[0]+animationAABB[3])/2, 
+					(animationAABB[1]+animationAABB[4])/2,
+					(animationAABB[2]+animationAABB[5])/2) ;
+
+		}
+
+		//load model skeleton
+		returnVal = chooser.showOpenDialog(null);
+		if(returnVal == JFileChooser.APPROVE_OPTION){
+			String filename= chooser.getSelectedFile().getPath() ;
+			displayanimation = new Animation(new File(filename)) ;
+			model = new boundmodel(rawmodel, displayanimation.baseskeletonroot) ;
+			
 		}
 		
-		
+		//load applied animation  skeleton
+		returnVal = chooser.showOpenDialog(null);
+		if(returnVal == JFileChooser.APPROVE_OPTION){
+			String filename= chooser.getSelectedFile().getPath() ;
+			displayanimation = new Animation(new File(filename)) ;
+			
+		}
 
-		main r = new main();
+
+
+		main2 r = new main2();
 
 
 
 	}
 
-	public main(){
+	public main2(){
 
 
 		texturechange = true ;
@@ -169,10 +180,7 @@ public class main implements Runnable, EventDrivenInput{
 
 							begin();//begins section where 3D openGL drawing can happen
 
-							
-							//TODO move stuff here
-							//rotate one frame by euler angles converting to quaternion and concatenating
-							
+
 
 
 							//TODO Draw Stuff Here!
@@ -198,7 +206,7 @@ public class main implements Runnable, EventDrivenInput{
 								m.transform(rcp) ;
 								camerapos.add(animationcenter,new Vector3d(rcp.x,rcp.y,rcp.z)) ;
 								/*
-								
+
 								//System.out.println(dx +", " + dy) ;
 								Quat4d newrot = new Quat4d(0,0,0,1) ;
 								newrot.setAxisAngle(0, 1, 0, dx*rotspeed) ;
@@ -206,9 +214,9 @@ public class main implements Runnable, EventDrivenInput{
 								//rot.mul(newrot) ;
 								rot.setAxisAngle(1, 0, 0, dy*rotspeed) ;
 								rot.mul(newrot) ;
-								*/
+								 */
 							}
-							
+
 							if(mouserightdown){
 								//zoom camera in and out
 								Vector3d rcp = new Vector3d() ;
@@ -228,59 +236,61 @@ public class main implements Runnable, EventDrivenInput{
 							GL11.glTranslatef(-30, 0, -100) ;
 
 							GL11.glRotatef((float)( axisangle[3]*180/Math.PI), (float)axisangle[0], (float)axisangle[1], (float)axisangle[2]) ;
-							*/
-							
+							 */
+
 							//camera always looks at middle of AABB containing animation
 							GLU.gluLookAt((float)camerapos.x, (float)camerapos.y, (float)camerapos.z, 
 									(float)animationcenter.x,(float)animationcenter.y,(float)animationcenter.z, 0, 1, 0) ;
 
 
+							Joint root = displayanimation.getframe(sliderposition*displayanimation.animationlength) ;
+							
 
 							//GL11.glRotatef((float)(System.currentTimeMillis()&0xfffffff)/100f, 0, 1, 0) ;
-							if(modeldisplaymode){
-								GL11.glPolygonMode(GL11.GL_FRONT_AND_BACK, GL11.GL_FILL);
-								GL11.glEnable(GL11.GL_LIGHTING);
-								GL11.glEnable(GL11.GL_LIGHT0);
-								GL11.glEnable(GL11.GL_SMOOTH) ;
-								model.draw() ;
+
+							GL11.glPolygonMode(GL11.GL_FRONT_AND_BACK, GL11.GL_LINE);
+							GL11.glEnable(GL11.GL_LIGHTING);
+							GL11.glEnable(GL11.GL_LIGHT0);
+							GL11.glEnable(GL11.GL_SMOOTH) ;
+							model.pose(root).draw() ;
+
+							GL11.glColor3f(1, 1, 1) ;
+
+							long time = System.currentTimeMillis() ;
+							if(playing){
+								sliderposition += (time-lastplaytime)/(1000*displayanimation.animationlength) ;
+								lastplaytime = time ;
+								if(sliderposition > 1)sliderposition = 1 ;
 							}else{
-								GL11.glColor3f(1, 1, 1) ;
-								
-								long time = System.currentTimeMillis() ;
-								if(playing){
-									sliderposition += (time-lastplaytime)/(1000*displayanimation.animationlength) ;
-									lastplaytime = time ;
-									if(sliderposition > 1)sliderposition = 1 ;
-								}else{
-									lastplaytime = time ;
-								}
-								
-								
-								Joint root = displayanimation.getframe(sliderposition*displayanimation.animationlength) ;
-								
-								GL11.glPolygonMode(GL11.GL_FRONT_AND_BACK, GL11.GL_FILL);
-								GL11.glEnable(GL11.GL_LIGHTING);
-								GL11.glEnable(GL11.GL_LIGHT0);
-								
-								//draw the animation in cylindersa of "size", with "sides"
-								root.drawCylinders(.1, 6) ;
-								
-								if(tracingenabled){
-									GL11.glDisable(GL11.GL_LIGHTING);
-									GL11.glColor3f(0,0.5f,1) ;
-									int startoffset=-10,stopoffset = 3 ;
-									for(int k=0;k<displayanimation.jointnames.size(); k++){
-										String name = displayanimation.jointnames.get(k) ; // get the name of this joint
-										Vector3d last = displayanimation.getframe(displayanimation.frametime*startoffset+ sliderposition*displayanimation.animationlength).getJoint(name).getWorldPoint() ;
-										for(int f=startoffset+1; f < stopoffset; f++){
-											Vector3d current = displayanimation.getframe(displayanimation.frametime*f+ sliderposition*displayanimation.animationlength).getJoint(name).getWorldPoint() ;
-											//System.out.println(last.x +", " + last.y +", " + last.z) ;
-											drawLine(last, current) ;
-											last = current ;
-										}
+								lastplaytime = time ;
+							}
+
+
+							
+
+							GL11.glPolygonMode(GL11.GL_FRONT_AND_BACK, GL11.GL_FILL);
+							GL11.glEnable(GL11.GL_LIGHTING);
+							GL11.glEnable(GL11.GL_LIGHT0);
+							GL11.glColor3f(1, .5f, .5f) ;
+							//draw the animation in cylindersa of "size", with "sides"
+							root.drawCylinders(.5, 6) ;
+
+							if(tracingenabled){
+								GL11.glDisable(GL11.GL_LIGHTING);
+								GL11.glColor3f(0,0.5f,1) ;
+								int startoffset=-10,stopoffset = 3 ;
+								for(int k=0;k<displayanimation.jointnames.size(); k++){
+									String name = displayanimation.jointnames.get(k) ; // get the name of this joint
+									Vector3d last = displayanimation.getframe(displayanimation.frametime*startoffset+ sliderposition*displayanimation.animationlength).getJoint(name).getWorldPoint() ;
+									for(int f=startoffset+1; f < stopoffset; f++){
+										Vector3d current = displayanimation.getframe(displayanimation.frametime*f+ sliderposition*displayanimation.animationlength).getJoint(name).getWorldPoint() ;
+										//System.out.println(last.x +", " + last.y +", " + last.z) ;
+										drawLine(last, current) ;
+										last = current ;
 									}
 								}
 							}
+
 
 							//begin drawing iterface components here
 							begininterface(windowwidth,windowheight) ;
@@ -477,7 +487,7 @@ public class main implements Runnable, EventDrivenInput{
 			if(inAABB(x,y,pauseAABB)){
 				playing=false ;
 			}
-			
+
 			//hit pause
 			if(inAABB(x,y,traceAABB)){
 				tracingenabled=!tracingenabled ;

@@ -116,6 +116,42 @@ public class Joint {
 	}
 
 
+	//Returns a child joint whose segment is closest to the given point
+	public Joint getClosestJoint(Vector3d v){
+		Joint closest = this ;
+		double closeness = distancesquared(v) ;
+		
+		for(int k=0;k<children.size(); k++){
+			Joint result = children.get(k).getClosestJoint(v) ;
+			double c = result.distancesquared(v) ;
+			if(c < closeness){
+				closeness = c ;
+				closest = result ;
+			}
+		}
+		return closest	;
+		
+	}
+	
+	//returns the squared distance to the segment connecting this joint to its parent
+	public double distancesquared(Vector3d v){
+		if(parent == null){//cannot bind to root, it has no segment
+			return Double.MAX_VALUE ;
+		}
+		Vector4d a = new Vector4d(0,0,0,1) ;
+		Vector4d b = new Vector4d(baseoffset.x, baseoffset.y, baseoffset.z,1) ;
+		globaltransform.transform(a) ;
+		globaltransform.transform(b) ;
+		Vector3d av = new Vector3d(v.x-a.x, v.y-a.y, v.z-a.z) ;
+		Vector3d ab = new Vector3d(b.x-a.x, b.y-a.y, b.z-a.z) ;
+		
+		double t = Math.max(0, Math.min(1,av.dot(ab)/ab.dot(ab))) ;
+		double dx = a.x + t * ab.x - v.x ;
+		double dy = a.y + t * ab.y - v.y ;
+		double dz = a.z + t * ab.z - v.z ;
+		return dx*dx + dy*dy + dz*dz ;
+	}
+	
 	//sets the Global transform of this object assuming its parent's is set
 	//then recursively calls on children
 	public void setGlobalTransform(){
@@ -208,6 +244,11 @@ public class Joint {
 
 
 
+	}
+	
+	@Override
+	public int hashCode(){
+		return name.hashCode() ;
 	}
 	
 
