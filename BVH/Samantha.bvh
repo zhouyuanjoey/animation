@@ -37,11 +37,11 @@ ROOT Hips
         CHANNELS 3 Zrotation Xrotation Yrotation 
         JOINT Neck
         {
-            OFFSET 0 11.76 0
+            OFFSET 0 11.76 -1.5
             CHANNELS 2 Zrotation Xrotation 
             JOINT Head
             {
-                OFFSET 0 4.4 0
+                OFFSET 0 3.4 3
                 CHANNELS 3 Zrotation Xrotation Yrotation 
                 End Site
                 {

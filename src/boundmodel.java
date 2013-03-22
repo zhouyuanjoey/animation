@@ -23,27 +23,51 @@ public class boundmodel {
 	
 	//returns a new model that is this bound model in the given pose
 	public Obj pose(Joint pose){
+		pose.setBoneLengths(bindingpose) ;
+		pose.setGlobalTransform() ;
+		bindingpose.setGlobalTransform() ;
 		Obj newmodel = new Obj(model) ;
 		Hashtable<Joint, Matrix4d> posetoposemap = new Hashtable<Joint, Matrix4d>() ; // save the joint maps
 		for(int k=0;k<model.vertices.length;k++){
+			
+			
 			Joint from = vertexbind[k] ;
 			Joint to = pose.getJoint(from.name) ;
 			
 			Matrix4d map = posetoposemap.get(from) ; // look up joint map
 			if(map ==null){//calculate it if it hasn't been calculated yet
-				//TODO good idea, needs work
+				
+				
+				
 				Vector3d axis = new Vector3d() ;
 				//axis of rotation for line up is cross product
 				axis.cross(from.baseoffset, to.baseoffset) ;
 				//it's length is sin(angle) * length1 * length2, so angle is arcsin
+			//System.out.println(from.baseoffset.length() +" = " + to.baseoffset.length() );
 				double angle = Math.asin(axis.length() / (from.baseoffset.length() * to.baseoffset.length())) ;
+				
 				Quat4d q = new Quat4d()  ;
+				
 				axis.normalize() ;
+				double lengthsquared = axis.lengthSquared();
 				q.setAxisAngle(axis.x, axis.y, axis.z, angle) ;
 				map = new Matrix4d();
-				map.invert(from.globaltransform) ;//invert the model skeleton transforms to get into local coordinates
-				//map.mul(new Matrix4d(q, new Vector3d(), 1)) ; // line up bone in local coordinates
-				map.mul(to.globaltransform) ;//then apply the transform of the pose we want
+				map.setIdentity() ;
+				if(lengthsquared >0.99 && lengthsquared <1.01 ){
+					//System.out.println(axis.toString() +" by " + angle) ;
+					map.mul(new Matrix4d(q, new Vector3d(), 1)) ;
+				}
+				Matrix4d m = new Matrix4d();
+				
+				m.invert(from.globaltransform) ;//invert the model skeleton transforms to get into local coordinates
+				
+				map.mul(m) ;
+				
+				map.mul(to.globaltransform,map) ;
+				//map.mul(from.globaltransform) ;
+				// line up bone in local coordinates
+				//map.mul(to.globaltransform) ;//then apply the transform of the pose we want
+				
 				posetoposemap.put(from,map) ;
 				
 			}

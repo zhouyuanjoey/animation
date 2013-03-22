@@ -82,6 +82,8 @@ public class main implements Runnable, EventDrivenInput{
 	static Obj model ;
 	
 
+	
+
 	public static void main(String args[]){
 		//if atleast 2 arguments then first 2 are width and height of window
 		if(args.length>=2){
